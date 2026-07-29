@@ -1,0 +1,79 @@
+{
+    "upscayl_settings": {
+        "description": "阿普升图设置",
+        "type": "object",
+        "items": {
+            "max_image_width": {
+                "description": "生图最大宽度限制(px)",
+                "type": "int",
+                "hint": "图片宽度超过该值时拒绝生图。常见参考值：1080P(1920)、2K(2560)、4K(3840)、6K(5760)、8K(7680)。",
+                "default": 2160,
+                "min": 100,
+                "max": 16384
+            },
+            "max_image_height": {
+                "description": "生图最大高度限制(px)",
+                "type": "int",
+                "hint": "图片高度超过该值时拒绝生图。常见参考值：1080P(1080)、2K(1440)、4K(2160)、6K(3240)、8K(4320)。",
+                "default": 3840,
+                "min": 100,
+                "max": 16384
+            },
+            "model_name": {
+                "description": "Upscayl AI 模型",
+                "type": "string",
+                "default": "数字艺术 (digital-art-4x)",
+                "options": [
+                    "数字艺术 (digital-art-4x)",
+                    "高保真 (high-fidelity-4x)",
+                    "Remacri (remacri-4x)",
+                    "超混合平衡 (ultramix-balanced-4x)",
+                    "超锐化 (ultrasharp-4x)",
+                    "轻量 (upscayl-lite-4x)",
+                    "标准 (upscayl-standard-4x)"
+                ]
+            },
+            "double_pass": {
+                "description": "Upscayl 双重生图",
+                "type": "bool",
+                "default": false
+            },
+            "enable_taa": {
+                "description": "Upscayl TAA 模式",
+                "type": "bool",
+                "default": true
+            },
+            "scale": {
+                "description": "Upscayl 生图倍数",
+                "type": "int",
+                "default": 2,
+                "min": 1,
+                "max": 4
+            },
+            "bin_path": {
+                "description": "Upscayl 可执行文件路径",
+                "type": "string",
+                "hint": "留空则自动检测插件内放置的环境或自动下载；也可手动填入电脑安装路径（如 C:/Program Files/Upscayl/resources/bin/upscayl-bin.exe）。",
+                "default": ""
+            },
+            "models_path": {
+                "description": "Upscayl 模型文件夹路径",
+                "type": "string",
+                "hint": "留空则自动检测插件内 models 文件夹；也可手动填入电脑安装路径（如 C:/Program Files/Upscayl/resources/models）。",
+                "default": ""
+            }
+        }
+    },
+    "ffmpeg_settings": {
+        "description": "FFmpeg 设置",
+        "type": "object",
+        "items": {
+            "ffmpeg_bin_path": {
+                "description": "FFmpeg 可执行文件路径",
+                "type": "string",
+                "hint": "若已加入系统 PATH 环境变量，直接填写 'ffmpeg' 即可。",
+                "default": "ffmpeg"
+            }
+        }
+    }
+}
