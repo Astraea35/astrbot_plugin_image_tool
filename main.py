@@ -27,7 +27,7 @@ UPSCAYL_MODEL_NAME_MAP = {
 CACHE_TTL_SEC = 7 * 24 * 3600  # 7 天缓存过期时间
 
 
-@register("AI 升图与 AVIF 转换工具", "Yuanluoo", "独立高清 AI 升图与 FFmpeg AVIF 格式转换工具", "1.0.0")
+@register("AI 升图与 AVIF 转换工具", "Yuanluoo", "独立高清 AI 升图与 FFmpeg AVIF 格式转换工具", "1.0.1")
 class ImageToolPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -45,6 +45,32 @@ class ImageToolPlugin(Star):
         
         # 启动后台 7 天缓存定期清理任务
         asyncio.create_task(self._auto_clean_expired_cache())
+
+    def _get_upscayl_paths(self) -> tuple[str, str]:
+        """获取 Upscayl 可执行文件与模型目录路径：
+        优先读取插件自带的 resources 目录，未找到则回退至用户自定义配置项。
+        """
+        plugin_dir = Path(__file__).parent.resolve()
+        
+        # 1. 可执行文件路径判定 (兼顾 Windows 与 Linux/Mac)
+        local_bin_exe = plugin_dir / "resources" / "bin" / "upscayl-bin.exe"
+        local_bin = plugin_dir / "resources" / "bin" / "upscayl-bin"
+        
+        if local_bin_exe.is_file():
+            resolved_bin = str(local_bin_exe)
+        elif local_bin.is_file():
+            resolved_bin = str(local_bin)
+        else:
+            resolved_bin = str(self.config.get("upscayl_settings.bin_path", "C:/Program Files/Upscayl/resources/bin/upscayl-bin.exe"))
+
+        # 2. 模型文件夹路径判定
+        local_models = plugin_dir / "resources" / "models"
+        if local_models.is_dir() and any(local_models.iterdir()):
+            resolved_models = str(local_models)
+        else:
+            resolved_models = str(self.config.get("upscayl_settings.models_path", "C:/Program Files/Upscayl/resources/models"))
+
+        return resolved_bin, resolved_models
 
     async def _auto_clean_expired_cache(self):
         """每 12 小时检查并清理大于 7 天的旧缓存"""
@@ -70,7 +96,6 @@ class ImageToolPlugin(Star):
         """
         start_time = time.time()
         percent_pattern = re.compile(r"(\d+(?:\.\d+)?)\s*%")
-        ffmpeg_time_pattern = re.compile(r"(?:time|out_time)=(\d+):(\d+):(\d+(?:\.\d+)?)")
 
         stream = proc.stderr or proc.stdout
         if not stream:
@@ -84,13 +109,11 @@ class ImageToolPlugin(Star):
 
         while True:
             try:
-                # 1 秒超时控制，方便触发心跳
                 chunk_bytes = await asyncio.wait_for(stream.read(256), timeout=1.0)
                 if not chunk_bytes:
                     break
                 buffer += chunk_bytes.decode('utf-8', errors='ignore')
 
-                # 拆分 \r 与 \n
                 while '\r' in buffer or '\n' in buffer:
                     pos_r = buffer.find('\r')
                     pos_n = buffer.find('\n')
@@ -106,7 +129,6 @@ class ImageToolPlugin(Star):
 
                     pct_val = None
 
-                    # 1. 尝试匹配百分比 (Upscayl)
                     match_pct = percent_pattern.search(text)
                     if match_pct:
                         try:
@@ -114,7 +136,6 @@ class ImageToolPlugin(Star):
                         except ValueError:
                             pass
 
-                    # 2. 百分比处理
                     if pct_val is not None:
                         has_percentage = True
                         elapsed_sec = int(time.time() - start_time)
@@ -127,7 +148,6 @@ class ImageToolPlugin(Star):
                                 last_logged_pct = pct_val
 
             except asyncio.TimeoutError:
-                # 心跳：仅在没有百分比输出的 FFmpeg 阶段打点
                 if not has_percentage:
                     elapsed_sec = int(time.time() - start_time)
                     if elapsed_sec >= last_heartbeat_sec + 2 and proc.returncode is None:
@@ -228,8 +248,8 @@ class ImageToolPlugin(Star):
                 self.current_task_info["percent"] = "100.0%"
             return out_path
 
-        upscayl_bin = str(self.config.get("upscayl_settings.bin_path", "C:/Program Files/Upscayl/resources/bin/upscayl-bin.exe"))
-        models_dir = str(self.config.get("upscayl_settings.models_path", "C:/Program Files/Upscayl/resources/models"))
+        # 动态判定并优先读取插件目录 resources/
+        upscayl_bin, models_dir = self._get_upscayl_paths()
         scale = str(self.config.get("upscayl_settings.scale", 2))
         enable_taa = bool(self.config.get("upscayl_settings.enable_taa", True))
         double_pass = bool(self.config.get("upscayl_settings.double_pass", False))
@@ -250,7 +270,7 @@ class ImageToolPlugin(Star):
             self.current_task_info["percent"] = "0.0%"
             
         cmd1 = _build_cmd(input_path, pass1_path if double_pass else out_path)
-        logger.info("🎨 [Upscayl] 执行 1 次升图 (%sx/%s): %s", scale, model_name, input_path.name)
+        logger.info("🎨 [Upscayl] 执行 1 次升图 (%sx/%s) [Bin: %s]: %s", scale, model_name, upscayl_bin, input_path.name)
         proc1 = await asyncio.create_subprocess_exec(*cmd1, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
         
         await self._monitor_process_percentage(proc1, "🎨 AI 升图中", "Pass 1")

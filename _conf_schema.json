@@ -51,13 +51,15 @@
                 "max": 4
             },
             "bin_path": {
-                "description": "Upscayl 可执行文件路径",
+                "description": "Upscayl 可执行文件路径 (备用)",
                 "type": "string",
+                "hint": "优先使用插件 resources/bin/ 目录。若插件目录无文件则读取此备用路径。",
                 "default": "C:/Program Files/Upscayl/resources/bin/upscayl-bin.exe"
             },
             "models_path": {
-                "description": "Upscayl 模型文件夹路径",
+                "description": "Upscayl 模型文件夹路径 (备用)",
                 "type": "string",
+                "hint": "优先使用插件 resources/models/ 目录。若插件目录无模型则读取此备用路径。",
                 "default": "C:/Program Files/Upscayl/resources/models"
             }
         }
