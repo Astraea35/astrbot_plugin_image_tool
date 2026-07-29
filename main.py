@@ -29,12 +29,11 @@ UPSCAYL_MODEL_NAME_MAP = {
 CACHE_TTL_SEC = 7 * 24 * 3600  # 7 天缓存过期时间
 
 
-@register("AI 升图与 AVIF 转换工具", "Yuanluoo", "独立高清 AI 升图与 FFmpeg AVIF 格式转换工具", "1.0.3")
+@register("AI 升图与 AVIF 转换工具", "Yuanluoo", "独立高清 AI 升图与 FFmpeg AVIF 格式转换工具", "1.0.4")
 class ImageToolPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
         self.context = context
-        self.config = context.get_config()
         
         # 缓存目录初始化
         self.cache_dir = Path(os.getcwd()) / "data" / "cache" / "image_tool"
@@ -49,8 +48,9 @@ class ImageToolPlugin(Star):
         asyncio.create_task(self._auto_clean_expired_cache())
 
     def _get_cfg(self, section: str, key: str, default=None):
-        """安全获取两层嵌套配置项"""
-        sec = self.config.get(section, {})
+        """安全获取两层嵌套配置项（修改为动态实时拉取，修改保存即刻生效）"""
+        current_config = self.context.get_config()
+        sec = current_config.get(section, {}) if isinstance(current_config, dict) else {}
         if isinstance(sec, dict):
             return sec.get(key, default)
         return default
