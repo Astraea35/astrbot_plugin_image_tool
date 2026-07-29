@@ -5,7 +5,7 @@ version: "1.0.2"
 author: "Yuanluoo"
 repo: https://github.com/Yuanluoo/astrbot_plugin_image_tool
 display_name: "AI升图与AVIF转换工具"
-astrbot_version: "1.0.2"
+astrbot_version: ">=4.0.0"
 support_platforms:
   - aiocqhttp
   - qq_official
