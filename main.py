@@ -46,13 +46,20 @@ class ImageToolPlugin(Star):
         # 启动后台 7 天缓存定期清理任务
         asyncio.create_task(self._auto_clean_expired_cache())
 
+    def _get_cfg(self, section: str, key: str, default=None):
+        """安全获取两层嵌套配置项"""
+        sec = self.config.get(section, {})
+        if isinstance(sec, dict):
+            return sec.get(key, default)
+        return default
+
     def _get_upscayl_paths(self) -> tuple[str, str]:
         """获取 Upscayl 可执行文件与模型目录路径：
         优先读取插件自带的 resources 目录，未找到则回退至用户自定义配置项。
         """
         plugin_dir = Path(__file__).parent.resolve()
         
-        # 1. 可执行文件路径判定 (兼顾 Windows 与 Linux/Mac)
+        # 1. 可执行文件路径判定
         local_bin_exe = plugin_dir / "resources" / "bin" / "upscayl-bin.exe"
         local_bin = plugin_dir / "resources" / "bin" / "upscayl-bin"
         
@@ -61,14 +68,14 @@ class ImageToolPlugin(Star):
         elif local_bin.is_file():
             resolved_bin = str(local_bin)
         else:
-            resolved_bin = str(self.config.get("upscayl_settings.bin_path", "C:/Program Files/Upscayl/resources/bin/upscayl-bin.exe"))
+            resolved_bin = str(self._get_cfg("upscayl_settings", "bin_path", "C:/Program Files/Upscayl/resources/bin/upscayl-bin.exe"))
 
         # 2. 模型文件夹路径判定
         local_models = plugin_dir / "resources" / "models"
         if local_models.is_dir() and any(local_models.iterdir()):
             resolved_models = str(local_models)
         else:
-            resolved_models = str(self.config.get("upscayl_settings.models_path", "C:/Program Files/Upscayl/resources/models"))
+            resolved_models = str(self._get_cfg("upscayl_settings", "models_path", "C:/Program Files/Upscayl/resources/models"))
 
         return resolved_bin, resolved_models
 
@@ -90,10 +97,7 @@ class ImageToolPlugin(Star):
 
     # region 实时百分比与耗时心跳解析器
     async def _monitor_process_percentage(self, proc: asyncio.subprocess.Process, stage_prefix: str, task_label: str = "1"):
-        """实时捕获子进程 (Upscayl / FFmpeg) 进度：
-        - 带百分比 (Upscayl): 按频率打印 % 并附带耗时，更新 task_info
-        - 单图无百分比 (FFmpeg): 每 2 秒刷新纯耗时打点
-        """
+        """实时捕获子进程 (Upscayl / FFmpeg) 进度"""
         start_time = time.time()
         percent_pattern = re.compile(r"(\d+(?:\.\d+)?)\s*%")
 
@@ -198,7 +202,7 @@ class ImageToolPlugin(Star):
                 return buffer, md5
 
     async def _send_file_via_onebot_api(self, event: AstrMessageEvent, file_path: Path) -> bool:
-        """绕过普通消息链，使用 OneBot upload_group_file/upload_private_file 接口直传 Base64"""
+        """使用 OneBot upload_group_file/upload_private_file 接口直传 Base64"""
         try:
             bot = getattr(event, "bot", None)
             if not bot or not hasattr(bot, "api") or not hasattr(bot.api, "call_action"):
@@ -250,10 +254,10 @@ class ImageToolPlugin(Star):
 
         # 动态判定并优先读取插件目录 resources/
         upscayl_bin, models_dir = self._get_upscayl_paths()
-        scale = str(self.config.get("upscayl_settings.scale", 2))
-        enable_taa = bool(self.config.get("upscayl_settings.enable_taa", True))
-        double_pass = bool(self.config.get("upscayl_settings.double_pass", False))
-        model_setting = str(self.config.get("upscayl_settings.model_name", "数字艺术 (digital-art-4x)"))
+        scale = str(self._get_cfg("upscayl_settings", "scale", 2))
+        enable_taa = bool(self._get_cfg("upscayl_settings", "enable_taa", True))
+        double_pass = bool(self._get_cfg("upscayl_settings", "double_pass", False))
+        model_setting = str(self._get_cfg("upscayl_settings", "model_name", "数字艺术 (digital-art-4x)"))
         model_name = UPSCAYL_MODEL_NAME_MAP.get(model_setting, model_setting)
 
         pass1_path = self.cache_dir / f"{img_md5}_up1.png"
@@ -298,7 +302,7 @@ class ImageToolPlugin(Star):
         return out_path if out_path.exists() else input_path
 
     async def _ffmpeg_avif_process(self, input_path: Path, img_md5: str) -> Path:
-        """使用 FFmpeg libaom-av1 压缩为 AVIF（支持实时耗时打点）"""
+        """使用 FFmpeg libaom-av1 压缩为 AVIF"""
         out_path = self.cache_dir / f"{img_md5}_libaom.avif"
         
         # 缓存检查 (7 天)
@@ -313,7 +317,7 @@ class ImageToolPlugin(Star):
             self.current_task_info["stage"] = "🗜️ FFmpeg AVIF 编码转码中"
             self.current_task_info["percent"] = "0.0%"
 
-        ffmpeg_bin = str(self.config.get("ffmpeg_settings.ffmpeg_bin_path", "ffmpeg"))
+        ffmpeg_bin = str(self._get_cfg("ffmpeg_settings", "ffmpeg_bin_path", "ffmpeg"))
 
         cmd = [
             ffmpeg_bin,
@@ -383,8 +387,8 @@ class ImageToolPlugin(Star):
             raw_path.write_bytes(buffer)
 
         # 尺寸限制检查
-        max_w = int(self.config.get("upscayl_settings.max_image_width", 2160))
-        max_h = int(self.config.get("upscayl_settings.max_image_height", 3840))
+        max_w = int(self._get_cfg("upscayl_settings", "max_image_width", 2160))
+        max_h = int(self._get_cfg("upscayl_settings", "max_image_height", 3840))
         is_too_large, w, h = await asyncio.to_thread(self._check_image_dimension, raw_path, max_w, max_h)
         
         if is_too_large:
