@@ -10,6 +10,7 @@
 ## ✨ 核心特性
 
 - 🎨 **AI 放大重构 (`/升图`)**：响应 `/升图` 指令，接入 Upscayl 引擎，支持多种模型、自定义放大倍数及 TAA 抗锯齿。
+- 📦 **零配置自动构建**：配置路径留空时，首次运行将自动检测并从 GitHub Release 静默下载 Upscayl 依赖环境，开箱即用。
 - 📊 **实时进度查询 (`/升图进度`)**：支持随时查询显卡/处理器的实时运行状态、当前任务百分比、已耗时秒数及排队队列。
 - 🚫 **长宽单独拦截**：独立设置长/宽像素限制，超限图片自动拒绝升图，有效规避显存与内存溢出风险。
 - 🗜️ **AVIF 极致压缩 (`/avif`)**：基于 FFmpeg `libaom-av1` (CRF 18) 预设编码，在保留高画质细节的同时大幅压缩体积。
@@ -45,14 +46,14 @@
 | `scale` | 整数 | `2` | 单次升图放大倍数 (支持 1 - 4 倍) |
 | `double_pass` | 开关 | `false` | 是否执行双重升图（开启获得最高精度，关闭速度翻倍） |
 | `enable_taa` | 开关 | `true` | 是否启用 TAA 抗锯齿模式以减少图像伪影 |
-| `bin_path` | 字符串 | `C:/Program Files/Upscayl/...` | `upscayl-bin.exe` 的绝对路径 |
-| `models_path` | 字符串 | `C:/Program Files/Upscayl/...` | `models` 文件夹的绝对路径 |
+| `bin_path` | 字符串 | `留空` | 留空则自动检测/下载依赖环境；也可填入本地绝对路径（如 `C:/.../upscayl-bin.exe`） |
+| `models_path` | 字符串 | `留空` | 留空则自动检测/下载依赖模型；也可填入本地绝对路径（如 `C:/.../models`） |
 
 ### FFmpeg 设置
 
 | 配置项 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `ffmpeg_bin_path` | 字符串 | `ffmpeg` | FFmpeg 可执行文件路径 |
+| `ffmpeg_bin_path` | 字符串 | `ffmpeg` | FFmpeg 可执行文件路径（加入环境变量 PATH 保持默认即可） |
 
 ---
 
@@ -63,8 +64,7 @@ astrbot_plugin_image_tool/
 ├── README.md            # 说明文档
 ├── metadata.yaml        # 插件元信息
 ├── _conf_schema.json    # 插件配置面板定义
-└── main.py              # 核心逻辑
-
-## 🙏 致谢 (Credits)
-
-- AI 升图核心引擎来源于开源项目 [Upscayl](https://github.com/upscayl/upscayl) (AGPL-3.0 License)。
+├── main.py              # 核心逻辑
+└── upscayl/             # 运行环境目录（首次运行自动下载构建）
+🙏 致谢 (Credits)
+AI 升图核心引擎来源于开源项目 Upscayl (AGPL-3.0 License)。
