@@ -27,7 +27,7 @@ UPSCAYL_MODEL_NAME_MAP = {
 CACHE_TTL_SEC = 7 * 24 * 3600  # 7 天缓存过期时间
 
 
-@register("AI 升图与 AVIF 转换工具", "Yuanluoo", "独立高清 AI 升图与 FFmpeg AVIF 格式转换工具", "1.0.1")
+@register("AI 升图与 AVIF 转换工具", "Yuanluoo", "独立高清 AI 升图与 FFmpeg AVIF 格式转换工具", "1.0.2")
 class ImageToolPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)

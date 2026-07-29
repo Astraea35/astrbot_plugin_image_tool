@@ -68,3 +68,9 @@ astrbot_plugin_image_tool/
 └── upscayl/             # 运行环境目录（首次运行自动下载构建）
 🙏 致谢 (Credits)
 AI 升图核心引擎来源于开源项目 Upscayl (AGPL-3.0 License)。
+
+外部工具依赖：
+
+FFmpeg：需安装系统环境变量中，或在配置项 ffmpeg_bin_path 中指定绝对路径。
+
+Upscayl：若使用 AI 升图功能，请在系统安装 Upscayl 官方客户端。默认会自动寻找 C:/Program Files/Upscayl/... 路径，非默认路径可在插件设置中自定义。
