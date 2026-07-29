@@ -6,6 +6,8 @@ import hashlib
 import asyncio
 from pathlib import Path
 import aiohttp
+import cv2
+import numpy as np
 
 from PIL import Image as PILImage
 from astrbot.api import logger
@@ -27,7 +29,7 @@ UPSCAYL_MODEL_NAME_MAP = {
 CACHE_TTL_SEC = 7 * 24 * 3600  # 7 天缓存过期时间
 
 
-@register("AI 升图与 AVIF 转换工具", "Yuanluoo", "独立高清 AI 升图与 FFmpeg AVIF 格式转换工具", "1.0.2")
+@register("AI 升图与 AVIF 转换工具", "Yuanluoo", "独立高清 AI 升图与 FFmpeg AVIF 格式转换工具", "1.1.0")
 class ImageToolPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -237,6 +239,32 @@ class ImageToolPlugin(Star):
                 return exceeds, w, h
         except Exception:
             return False, 0, 0
+
+    @staticmethod
+    def _predict_is_anime(image_path: Path) -> bool:
+        """提取 CV 物理特征 (饱和度、平坦度、边缘比) 判断是否为二次元/插画"""
+        try:
+            # 安全读取，避免 Windows 系统下中文路径报错
+            data = np.fromfile(str(image_path.resolve()), dtype=np.uint8)
+            img_bgr = cv2.imdecode(data, cv2.IMREAD_COLOR)
+            if img_bgr is None:
+                return True  # 读取失败兜底默认二次元
+
+            hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+            saturation_mean = float(np.mean(hsv[:, :, 1]))
+
+            gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+            edges = cv2.Canny(gray, 50, 150)
+            edge_ratio = float(np.count_nonzero(edges) / edges.size)
+            non_edge_mask = (edges == 0)
+            flatness_std = float(np.std(gray[non_edge_mask])) if np.any(non_edge_mask) else 50.0
+
+            # 动漫插画显著特征：较高饱和度 OR 明显线稿边缘 OR 平坦填色
+            is_anime = (flatness_std < 65.0) or (edge_ratio > 0.02) or (saturation_mean > 65.0)
+            return is_anime
+        except Exception as e:
+            logger.warning("⚠️ CV 检测异常，默认回退至二次元处理: %s", str(e))
+            return True
     # endregion
 
     # region 升图与 FFmpeg 处理核心
@@ -257,8 +285,20 @@ class ImageToolPlugin(Star):
         scale = str(self._get_cfg("upscayl_settings", "scale", 2))
         enable_taa = bool(self._get_cfg("upscayl_settings", "enable_taa", True))
         double_pass = bool(self._get_cfg("upscayl_settings", "double_pass", False))
-        model_setting = str(self._get_cfg("upscayl_settings", "model_name", "数字艺术 (digital-art-4x)"))
-        model_name = UPSCAYL_MODEL_NAME_MAP.get(model_setting, model_setting)
+        
+        model_setting = str(self._get_cfg("upscayl_settings", "model_name", "智能判定 (Auto)"))
+        
+        # 智能判定逻辑
+        if model_setting == "智能判定 (Auto)":
+            is_anime = await asyncio.to_thread(self._predict_is_anime, input_path)
+            model_name = "digital-art-4x" if is_anime else "ultrasharp-4x"
+            label = "二次元/插画" if is_anime else "真实照片"
+            logger.info("🧠 [CV智能判定] 该图片特征判定为 %s，自动挂载模型: %s", label, model_name)
+            
+            if self.current_task_info:
+                self.current_task_info["stage"] = f"🧠 判定为{label}, 准备升图"
+        else:
+            model_name = UPSCAYL_MODEL_NAME_MAP.get(model_setting, model_setting)
 
         pass1_path = self.cache_dir / f"{img_md5}_up1.png"
 
