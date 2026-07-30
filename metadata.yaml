@@ -1,7 +1,7 @@
 name: astrbot_plugin_image_tool
 desc: "独立高清 AI 升图与 FFmpeg AVIF 格式转换工具"
 help: "引用回复图片输入 /升图 或 /avif 即可触发处理。发送 /升图进度 查看排队与进度。"
-version: "1.0.5"
+version: "1.0.6"
 author: "Astraea35"
 repo: https://github.com/Astraea35/astrbot_plugin_image_tool
 display_name: "AI升图与AVIF转换工具"

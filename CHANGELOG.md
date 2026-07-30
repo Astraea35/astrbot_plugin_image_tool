@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.6
+
+- 添加logo
+
 ## v1.0.5
 
 - 修复设置bug
