@@ -29,7 +29,7 @@ UPSCAYL_MODEL_NAME_MAP = {
 CACHE_TTL_SEC = 7 * 24 * 3600  # 7 天缓存过期时间
 
 
-@register("AI 升图与 AVIF 转换工具", "Yuanluoo", "独立高清 AI 升图与 FFmpeg AVIF 格式转换工具", "1.0.6")
+@register("AI 升图与 AVIF 转换工具", "Yuanluoo", "独立高清 AI 升图与 FFmpeg AVIF 格式转换工具", "1.0.7")
 class ImageToolPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
         super().__init__(context)
@@ -386,12 +386,19 @@ class ImageToolPlugin(Star):
 
     # region 指令入口
     @filter.command("升图进度")
+    async def cmd_upscale_status(self, event: AstrMessageEvent):
+        """查询当前 AI 升图任务进度"""
+        yield event.plain_result(self._get_status_message())
+
     @filter.command("avif进度")
-    async def cmd_query_status(self, event: AstrMessageEvent):
-        """查询当前 AI 升图 / AVIF 转码任务进度"""
+    async def cmd_avif_status(self, event: AstrMessageEvent):
+        """查询当前 AVIF 转码任务进度"""
+        yield event.plain_result(self._get_status_message())
+
+    def _get_status_message(self) -> str:
+        """生成当前 AI 升图 / AVIF 转码任务状态文本"""
         if not self.process_lock.locked() and not self.current_task_info:
-            yield event.plain_result("🟢 当前显卡与处理器空闲，没有正在执行的升图或转码任务。")
-            return
+            return "🟢 当前显卡与处理器空闲，没有正在执行的升图或转码任务。"
 
         task = self.current_task_info or {}
         sender = task.get("user", "未知用户")
@@ -412,7 +419,7 @@ class ImageToolPlugin(Star):
             f"⏱️ 已用时间：{elapsed} 秒\n"
             f"⏳ 队尾等待：{waiting} 个任务"
         )
-        yield event.plain_result(status_msg)
+        return status_msg
 
     @filter.command("升图")
     async def cmd_upscale(self, event: AstrMessageEvent):
